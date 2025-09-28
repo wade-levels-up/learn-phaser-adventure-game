@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phaser Adventure Game</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #2c3e50;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.86.0/dist/phaser.min.js"></script>
+</head>
+<body>
+    <h1>Learn Phaser Adventure Game</h1>
+    <script>
+        const config = {
+            type: Phaser.AUTO,
+            width: 768,
+            height: 567,
+            backgroundColor: '#000000',
+            scene: {
+                preload: preload,
+                create: create,
+                update: update
+            }
+        };
+
+        const game = new Phaser.Game(config);
+
+        let player;
+        let cursors;
+        let playerGridX = 3;
+        let playerGridY = 3;
+        const tileSize = 64;
+        let isMoving = false;
+        const moveSpeed = 350; // Changed from moveDelay to moveSpeed
+        let scene; // Store scene reference
+        let collisionLayer; // Add this to check collisions
+
+        function preload () {
+            // Load the original PNG
+            this.load.image('foursqr', 'assets/foursqr.png');
+            // Load the JSON map from Tiled
+            this.load.tilemapTiledJSON('maze', 'assets/maze.json');
+
+            this.load.image('man', 'assets/man.png')
+        }
+
+        function create () {
+            scene = this; // Store the scene reference
+
+            // Create tilemap from Tiled JSON
+            const map = this.make.tilemap({ key: 'maze' });
+            const tileset = map.addTilesetImage('foursqr', 'foursqr');
+            const groundLayer = map.createLayer('Tile Layer 1', tileset, 0, 0);
+
+            // Set up collision for tiles with collision property
+            groundLayer.setCollisionByProperty({ collision: true });
+            collisionLayer = groundLayer;
+
+            // Calculate pixel position from grid position
+            const startX = playerGridX * tileSize + 32;
+            const startY = playerGridY * tileSize + 32;
+
+            player = this.add.image(startX, startY, 'man');
+            cursors = this.input.keyboard.createCursorKeys();
+        }
+
+        function update (time) {
+            // Game logic per frame
+
+            // Add timing control so it doesn't move too fast
+            if (isMoving) return;
+
+            if (cursors.left.isDown) movePlayer(-1, 0);
+            else if (cursors.right.isDown) movePlayer(1, 0);
+            else if (cursors.up.isDown) movePlayer(0, -1);
+            else if (cursors.down.isDown) movePlayer(0, 1);
+        }
+
+        function movePlayer(deltaX, deltaY) {
+            const newGridX = playerGridX + deltaX;
+            const newGridY = playerGridY + deltaY;
+            
+            // Check boundaries
+            if (newGridX >= 0 && newGridX < 12 && newGridY >= 0 && newGridY < 9) {
+                
+                // Calculate target pixel position USING NEW GRID COORDINATES
+                const targetX = newGridX * tileSize + 32;
+                const targetY = newGridY * tileSize + 32;
+
+                // Get tile at target position
+                const tile = collisionLayer.getTileAtWorldXY(targetX, targetY);
+
+                // If tile exists and has collision property, don't move
+                if (tile && tile.properties.collision) {
+                    console.log('Collision detected! Cannot move there.');
+                    return; // Block the move
+                }
+
+                // Update grid position
+                playerGridX = newGridX;
+                playerGridY = newGridY;
+                
+                // Set moving flag
+                isMoving = true;
+                
+                // Create smooth tween animation
+                scene.tweens.add({
+                    targets: player,
+                    x: targetX,
+                    y: targetY,
+                    duration: moveSpeed,
+                    ease: 'Linear',
+                    onComplete: () => {
+                        isMoving = false; // Allow new moves when animation completes
+                    }
+                });
+            }
+        }
+    </script>
+</body>
+</html>
